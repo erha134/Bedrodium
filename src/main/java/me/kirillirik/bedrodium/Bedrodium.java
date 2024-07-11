@@ -9,6 +9,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
+import net.minecraft.network.packet.CustomPayload;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
@@ -29,7 +30,7 @@ public final class Bedrodium implements ClientModInitializer {
     /**
      * Bedrodium channel.
      */
-    private static final Identifier CHANNEL = new Identifier("bedrodium", "v1");
+    private static final Identifier CHANNEL = Identifier.of("bedrodium", "v1");
 
     /**
      * Camera position controller
@@ -98,19 +99,22 @@ public final class Bedrodium implements ClientModInitializer {
         ClientTickEvents.END_WORLD_TICK.register(world -> cameraController.handleEndTick());
 
         // Handle networking.
-        ClientPlayNetworking.registerGlobalReceiver(CHANNEL, (client, handler, buf, sender) -> {
-            try {
-                // Listen to server.
-                serverDisabled = buf.readBoolean();
-            } catch (Throwable ignored) {
-                // Disable if unknown data. (for clarity)
-                serverDisabled = true;
-            }
+        ClientPlayNetworking.registerGlobalReceiver(new CustomPayload.Id<>(CHANNEL), (payload, context) -> {
+            // FIXME 1.21
+//            try {
+//                // Listen to server.
+//                serverDisabled = buf.readBoolean();
+//            } catch (Throwable ignored) {
+//                // Disable if unknown data. (for clarity)
+//                serverDisabled = true;
+//            }
+
+            serverDisabled = false;
 
             // Schedule to main thread.
-            client.execute(() -> {
+            context.client().execute(() -> {
                 // Rerender the world.
-                client.worldRenderer.reload();
+                context.client().worldRenderer.reload();
 
                 // Make info msg
                 final String msg = serverDisabled ?
@@ -125,7 +129,7 @@ public final class Bedrodium implements ClientModInitializer {
                         (enabled ? Formatting.GREEN : Formatting.RED);
 
                 // Display the info.
-                client.inGameHud.setOverlayMessage(
+                context.client().inGameHud.setOverlayMessage(
                         Text.translatable(msg).formatted(formatting, Formatting.BOLD), false
                 );
             });
